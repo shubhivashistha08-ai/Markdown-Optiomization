@@ -24,8 +24,9 @@ def load_data():
 
 try:
     df = load_data()
-except Exception:
-    st.error("❌ Failed to load the dataset.")
+    st.write("Columns in CSV:", df.columns.tolist())  # Print columns to verify
+except Exception as e:
+    st.error(f"❌ Failed to load the dataset: {e}")
     st.stop()
 
 # --------------------------------------------------
@@ -62,6 +63,7 @@ st.divider()
 # --------------------------------------------------
 st.sidebar.header("🔍 Filters")
 
+# Use normalized column names
 categories = sorted(df["category"].unique())
 seasons = sorted(df["season"].unique())
 
@@ -86,6 +88,13 @@ filtered_df = df[
 # Revenue computation
 # --------------------------------------------------
 st.subheader("📊 Revenue by Markdown Stage and Category")
+
+# Ensure columns exist
+required_cols = ["price", "markdown", "sales_after"]
+missing_cols = [c for c in required_cols if c not in filtered_df.columns]
+if missing_cols:
+    st.error(f"❌ Missing columns in dataset: {missing_cols}")
+    st.stop()
 
 filtered_df["revenue"] = (
     filtered_df["price"]

@@ -34,27 +34,28 @@ except Exception as e:
 st.title("🛍️ Retail Markdown Optimization Assistant")
 
 # --------------------------------------------------
-# Problem statement
+# Problem statement - Collapsible
 # --------------------------------------------------
-st.subheader("ℹ️ What problem does this app solve?")
+show_info = st.checkbox("ℹ️ Show Problem Statement", value=False)
 
-col1, col2 = st.columns(2)
-with col1:
-    st.markdown("**Business Problem**")
-    st.markdown("""
-    Retailers often apply discounts without knowing:
-    - How deep to markdown
-    - Which markdown stage (M1–M4) balances clearance and profit
-    - Which products respond best to discounts
-    """)
+if show_info:
+    col1, col2 = st.columns(2)
+    with col1:
+        st.markdown("**Business Problem**")
+        st.markdown("""
+        Retailers often apply discounts without knowing:
+        - How deep to markdown
+        - Which markdown stage (M1–M4) balances clearance and profit
+        - Which products respond best to discounts
+        """)
 
-with col2:
-    st.markdown("**This App Helps You Answer:**")
-    st.markdown("""
-    - Which **categories and seasons** respond best to deeper markdowns  
-    - Which **markdown stage** maximizes revenue for each product
-    - What is the **optimal discount** to maximize both sales and profit
-    """)
+    with col2:
+        st.markdown("**This App Helps You Answer:**")
+        st.markdown("""
+        - Which **categories and seasons** respond best to deeper markdowns  
+        - Which **markdown stage** maximizes revenue for each product
+        - What is the **optimal discount** to maximize both sales and profit
+        """)
 
 st.divider()
 
@@ -99,7 +100,6 @@ if len(filtered_df) == 0:
 # --------------------------------------------------
 # Reshape data for markdown analysis
 # --------------------------------------------------
-# Create a long-form dataset with all markdown stages
 markdown_data = []
 for _, row in filtered_df.iterrows():
     for i in range(1, 5):
@@ -145,7 +145,6 @@ with col3:
     st.metric("📦 Products Analyzed", f"{products_analyzed:,}")
 
 with col4:
-    # Calculate average sales lift from optimal markdown
     historical_sales = filtered_df["Historical_Sales"].mean()
     optimal_sales = best_per_product["Sales"].mean()
     sales_lift = ((optimal_sales / historical_sales) - 1) * 100
@@ -170,24 +169,38 @@ with col1:
         color="Category",
         title="Revenue Performance Across Markdown Stages",
         barmode="group",
-        color_discrete_sequence=px.colors.qualitative.Set2
+        color_discrete_sequence=["#FF6B6B", "#4ECDC4", "#45B7D1"],
+        text_auto='.2s'
     )
+    fig.update_traces(textposition='outside')
     fig.update_layout(height=400)
     st.plotly_chart(fig, use_container_width=True)
 
 with col2:
-    st.markdown("**Key Insights:**")
-    
     # Find best stage overall
     stage_totals = markdown_df.groupby("Stage")["Revenue"].sum()
     best_stage = stage_totals.idxmax()
     
-    st.info(f"""
-    - **Best Overall Stage:** {best_stage}
-    - **Total Revenue:** ${stage_totals[best_stage]:,.0f}
-    
-    The optimal markdown stage varies by category and product. Use the chart to identify patterns.
-    """)
+    # Create styled box with same height as chart
+    st.markdown(f"""
+    <div style="background-color: #1e1e1e; 
+                padding: 20px; 
+                border-radius: 10px; 
+                height: 360px;
+                display: flex;
+                flex-direction: column;
+                justify-content: center;
+                border: 1px solid #333;">
+        <h3 style="color: white; margin-bottom: 20px;">📊 Key Insights</h3>
+        <ul style="color: white; font-size: 16px; line-height: 2;">
+            <li><strong>Best Overall Stage:</strong> {best_stage}</li>
+            <li><strong>Total Revenue:</strong> ${stage_totals[best_stage]:,.0f}</li>
+        </ul>
+        <p style="color: #cccccc; margin-top: 20px; font-size: 14px;">
+            The optimal markdown stage varies by category and product. Use the chart to identify patterns.
+        </p>
+    </div>
+    """, unsafe_allow_html=True)
 
 st.divider()
 
@@ -202,20 +215,24 @@ with col1:
     category_revenue = best_per_product.groupby("Category")["Revenue"].sum().reset_index()
     category_revenue = category_revenue.sort_values("Revenue", ascending=False)
     
-    fig = px.bar(
+    # Create pie chart for revenue distribution
+    fig = px.pie(
         category_revenue,
-        x="Category",
-        y="Revenue",
-        title="Revenue by Category (at Optimal Markdown)",
-        color="Revenue",
-        color_continuous_scale="Viridis"
+        values="Revenue",
+        names="Category",
+        title="Revenue Distribution by Category (at Optimal Markdown)",
+        color_discrete_sequence=["#FF6B6B", "#4ECDC4", "#45B7D1"],
+        hole=0.4
     )
-    fig.update_layout(height=350)
+    fig.update_traces(textposition='outside', textinfo='percent+label+value', 
+                      texttemplate='%{label}<br>%{percent:.1%}<br>$%{value:.2s}')
+    fig.update_layout(height=400)
     st.plotly_chart(fig, use_container_width=True)
 
 with col2:
     category_discount = best_per_product.groupby("Category")["Markdown"].mean().reset_index()
     category_discount["Markdown"] = category_discount["Markdown"] * 100
+    category_discount = category_discount.sort_values("Markdown", ascending=False)
     
     fig = px.bar(
         category_discount,
@@ -223,9 +240,11 @@ with col2:
         y="Markdown",
         title="Average Optimal Discount by Category",
         color="Markdown",
-        color_continuous_scale="RdYlGn_r"
+        color_continuous_scale=["#00D9FF", "#FFB800", "#FF6B6B"],
+        text_auto='.1f'
     )
-    fig.update_layout(height=350, yaxis_title="Discount (%)")
+    fig.update_traces(texttemplate='%{text}%', textposition='outside')
+    fig.update_layout(height=400, yaxis_title="Discount (%)", showlegend=False)
     st.plotly_chart(fig, use_container_width=True)
 
 st.divider()
@@ -243,8 +262,11 @@ fig = px.line(
     y="Revenue",
     color="Season",
     markers=True,
-    title="Revenue by Season Across Markdown Stages"
+    title="Revenue by Season Across Markdown Stages",
+    color_discrete_sequence=["#FF6B6B", "#4ECDC4", "#45B7D1", "#FFB800"],
+    text="Revenue"
 )
+fig.update_traces(texttemplate='$%{text:.2s}', textposition='top center')
 fig.update_layout(height=400)
 st.plotly_chart(fig, use_container_width=True)
 
@@ -303,10 +325,16 @@ fig = px.scatter(
     size="Sales",
     hover_data=["Product_ID", "Stage"],
     title="Relationship between Discount Depth and Revenue",
-    labels={"Markdown": "Discount Level", "Revenue": "Revenue Generated"}
+    labels={"Markdown": "Discount Level", "Revenue": "Revenue Generated"},
+    color_discrete_sequence=["#FF6B6B", "#4ECDC4", "#45B7D1"]
 )
-fig.update_xaxis(tickformat=".0%")
-fig.update_layout(height=400)
+# Format x-axis as percentage without using tickformat
+fig.update_layout(
+    height=400,
+    xaxis=dict(
+        tickformat='.0%'
+    )
+)
 st.plotly_chart(fig, use_container_width=True)
 
 st.caption("💡 Each point represents a product at a specific markdown stage. Larger bubbles indicate higher sales volume.")

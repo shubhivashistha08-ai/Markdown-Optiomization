@@ -188,4 +188,34 @@ with tab2:
         # Stage metrics for this product
         prod_metrics = metrics_long[
             (metrics_long["product_name"] == row["product_name"]) &
-            (metr
+            (metrics_long["brand"] == row["brand"]) &
+            (metrics_long["season"] == row["season"])
+        ][["stage", "markdown", "sales", "revenue", "sell_through"]].copy()
+
+        prod_metrics["Markdown %"] = (prod_metrics["markdown"] * 100).round(1)
+        prod_metrics["Revenue $"] = prod_metrics["revenue"].round(0).astype(int)
+
+        st.markdown("### Markdown Performance by Stage")
+        st.dataframe(
+            prod_metrics[["stage", "Markdown %", "sales", "Revenue $", "sell_through"]],
+            use_container_width=True
+        )
+
+        # Charts: revenue & sales
+        col_r1, col_r2 = st.columns(2)
+        with col_r1:
+            st.markdown("#### Revenue by Stage")
+            st.bar_chart(prod_metrics.set_index("stage")[["Revenue $"]])
+        with col_r2:
+            st.markdown("#### Sales by Stage")
+            st.bar_chart(prod_metrics.set_index("stage")[["sales"]])
+
+        # Best stage
+        best_rev_stage = prod_metrics.loc[prod_metrics["Revenue $"].idxmax(), "stage"]
+        best_sell_stage = prod_metrics.loc[prod_metrics["sell_through"].idxmax(), "stage"]
+        st.markdown("### Interpretation")
+        st.write(f"- **Best revenue stage:** {best_rev_stage}")
+        st.write(f"- **Best sell-through stage:** {best_sell_stage}")
+
+st.divider()
+st.caption("Built with Streamlit • Retail Markdown Optimization Assistant")

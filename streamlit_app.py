@@ -4,15 +4,17 @@ import plotly.express as px
 from pathlib import Path
 
 # -------------------------------
-# Data loading and preprocessing
+# Load and preprocess data
 # -------------------------------
 @st.cache_data
 def load_markdown_data():
     csv_path = Path(__file__).parent / "src" / "synthetic_markdown_dataset.csv"
     df = pd.read_csv(csv_path)
-    df.columns = df.columns.str.strip().str.lower()
-    
-    # Rename columns to match template
+
+    # Normalize column names: lowercase and replace spaces with underscores
+    df.columns = df.columns.str.strip().str.lower().str.replace(" ", "_")
+
+    # Rename columns to match app logic
     df.rename(columns={
         "original_price": "price",
         "sales_after_m1": "sales_m1",
@@ -24,6 +26,15 @@ def load_markdown_data():
         "markdown_3": "markdown_m3",
         "markdown_4": "markdown_m4"
     }, inplace=True)
+
+    # Keep only essential columns to prevent KeyErrors
+    essential_cols = [
+        "product_id", "category", "brand", "season", "product_name", "price",
+        "markdown_m1", "markdown_m2", "markdown_m3", "markdown_m4",
+        "sales_m1", "sales_m2", "sales_m3", "sales_m4",
+        "stock_level"
+    ]
+    df = df[essential_cols].copy()
     return df
 
 def compute_stage_metrics(df):
@@ -39,9 +50,7 @@ def compute_stage_metrics(df):
     metrics_long = pd.concat(stage_data, ignore_index=True)
     return metrics_long
 
-# -------------------------------
 # Load data
-# -------------------------------
 df = load_markdown_data()
 metrics_long = compute_stage_metrics(df)
 
@@ -165,25 +174,17 @@ with tab2:
         selected_label = st.selectbox("Select product", sorted(prod_subset["product_label"].unique()))
         row = prod_subset[prod_subset["product_label"] == selected_label].iloc[0]
 
-        # Display product info
+        # Display product info (only essential columns)
         st.markdown("### Product Info")
-        c1, c2, c3, c4 = st.columns(4)
+        c1, c2 = st.columns(2)
         with c1:
             st.write(f"**Name:** {row['product_name']}")
             st.write(f"**Category:** {row['category']}")
             st.write(f"**Brand:** {row['brand']}")
             st.write(f"**Season:** {row['season']}")
+            st.write(f"**Price:** {row['price']:.2f}")
         with c2:
-            st.write(f"**Original Price:** {row['price']:.2f}")
-            st.write(f"**Competitor Price:** {row['competitor_price']:.2f}")
-            st.write(f"**Seasonality Factor:** {row['seasonality_factor']:.2f}")
-        with c3:
             st.write(f"**Stock Level:** {int(row['stock_level'])}")
-            st.write(f"**Customer Ratings:** {row['customer_ratings']:.1f}")
-            st.write(f"**Return Rate:** {row['return_rate']:.2f}")
-        with c4:
-            st.write(f"**Optimal Discount:** {row['optimal_discount']:.2f}")
-            st.write(f"**Promotion Type:** {row['promotion_type']}")
 
         # Stage metrics for this product
         prod_metrics = metrics_long[

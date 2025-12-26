@@ -1,11 +1,6 @@
 import streamlit as st
 import pandas as pd
-
-from src.data_loading import load_markdown_data
-from src.markdown_metrics import (
-    compute_revenue_by_stage_category,
-    compute_best_stage_per_product
-)
+from pathlib import Path
 
 # --------------------------------------------------
 # Page config
@@ -17,12 +12,12 @@ st.set_page_config(
 )
 
 # --------------------------------------------------
-# App title
+# Title
 # --------------------------------------------------
 st.title("🛍️ Retail Markdown Optimization Assistant")
 
 # --------------------------------------------------
-# Problem statement (NO HTML, NO CSS)
+# Problem statement (TEXT ONLY — no HTML)
 # --------------------------------------------------
 st.subheader("ℹ️ What problem does this app solve?")
 
@@ -48,16 +43,17 @@ st.markdown(
 st.divider()
 
 # --------------------------------------------------
-# Load data
+# Load data (Streamlit Cloud safe)
 # --------------------------------------------------
 @st.cache_data
 def load_data():
-    return load_markdown_data()
+    csv_path = Path(__file__).parent / "src" / "SYNTHETIC Markdown Dataset.csv"
+    return pd.read_csv(csv_path)
 
 try:
     df = load_data()
 except Exception as e:
-    st.error("Failed to load markdown dataset.")
+    st.error("❌ Failed to load the dataset.")
     st.stop()
 
 # --------------------------------------------------
@@ -69,34 +65,45 @@ categories = sorted(df["Category"].unique())
 seasons = sorted(df["Season"].unique())
 
 selected_categories = st.sidebar.multiselect(
-    "Select Category",
+    "Category",
     categories,
     default=categories
 )
 
 selected_seasons = st.sidebar.multiselect(
-    "Select Season",
+    "Season",
     seasons,
     default=seasons
 )
 
 filtered_df = df[
-    (df["Category"].isin(selected_categories)) &
-    (df["Season"].isin(selected_seasons))
+    df["Category"].isin(selected_categories) &
+    df["Season"].isin(selected_seasons)
 ]
 
 # --------------------------------------------------
-# Revenue by stage & category
+# Revenue computation
 # --------------------------------------------------
 st.subheader("📊 Revenue by Markdown Stage and Category")
 
-revenue_df = compute_revenue_by_stage_category(filtered_df)
+# Revenue = Price × (1 - Markdown) × Sales
+filtered_df["Revenue"] = (
+    filtered_df["Price"]
+    * (1 - filtered_df["Markdown"])
+    * filtered_df["Sales_After"]
+)
 
-if revenue_df.empty:
+revenue_stage_category = (
+    filtered_df
+    .groupby(["Stage", "Category"], as_index=False)["Revenue"]
+    .sum()
+)
+
+if revenue_stage_category.empty:
     st.warning("No data available for the selected filters.")
 else:
     st.bar_chart(
-        revenue_df,
+        revenue_stage_category,
         x="Stage",
         y="Revenue",
         color="Category",
@@ -108,10 +115,16 @@ else:
 # --------------------------------------------------
 st.subheader("🏆 Best Markdown Stage per Product")
 
-best_stage_df = compute_best_stage_per_product(filtered_df)
+best_stage = (
+    filtered_df
+    .groupby(["Product_ID", "Stage"], as_index=False)["Revenue"]
+    .sum()
+    .sort_values(["Product_ID", "Revenue"], ascending=[True, False])
+    .drop_duplicates("Product_ID")
+)
 
 st.dataframe(
-    best_stage_df,
+    best_stage.rename(columns={"Stage": "Best_Markdown_Stage"}),
     use_container_width=True,
     hide_index=True
 )

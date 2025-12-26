@@ -1,222 +1,320 @@
 import streamlit as st
 import pandas as pd
 import plotly.express as px
+import plotly.graph_objects as go
 from pathlib import Path
 
-# -------------------------------
-# Load and preprocess data
-# -------------------------------
-@st.cache_data
-def load_markdown_data():
-    csv_path = Path(__file__).parent / "src" / "synthetic_markdown_dataset.csv"
-    df = pd.read_csv(csv_path)
-
-    # Normalize column names: lowercase and replace spaces with underscores
-    df.columns = df.columns.str.strip().str.lower().str.replace(" ", "_")
-
-    # Rename columns to match app logic
-    df.rename(columns={
-        "original_price": "price",
-        "sales_after_m1": "sales_m1",
-        "sales_after_m2": "sales_m2",
-        "sales_after_m3": "sales_m3",
-        "sales_after_m4": "sales_m4",
-        "markdown_1": "markdown_m1",
-        "markdown_2": "markdown_m2",
-        "markdown_3": "markdown_m3",
-        "markdown_4": "markdown_m4"
-    }, inplace=True)
-
-    # Keep only essential columns to prevent KeyErrors
-    essential_cols = [
-        "product_id", "category", "brand", "season", "product_name", "price",
-        "markdown_m1", "markdown_m2", "markdown_m3", "markdown_m4",
-        "sales_m1", "sales_m2", "sales_m3", "sales_m4",
-        "stock_level"
-    ]
-    df = df[essential_cols].copy()
-    return df
-
-def compute_stage_metrics(df):
-    stage_data = []
-    for stage in range(1, 5):
-        stage_df = df.copy()
-        stage_df["stage"] = f"M{stage}"
-        stage_df["markdown"] = stage_df[f"markdown_m{stage}"]
-        stage_df["sales"] = stage_df[f"sales_m{stage}"]
-        stage_df["revenue"] = stage_df["price"] * (1 - stage_df["markdown"]) * stage_df["sales"]
-        stage_df["sell_through"] = stage_df["sales"] / stage_df["stock_level"]
-        stage_data.append(stage_df)
-    metrics_long = pd.concat(stage_data, ignore_index=True)
-    return metrics_long
-
-# Load data
-df = load_markdown_data()
-metrics_long = compute_stage_metrics(df)
-
-# -------------------------------
+# --------------------------------------------------
 # Page config
-# -------------------------------
+# --------------------------------------------------
 st.set_page_config(
     page_title="Retail Markdown Optimization Assistant",
-    layout="wide",
-    initial_sidebar_state="expanded"
+    page_icon="🛍️",
+    layout="wide"
 )
 
-# -------------------------------
-# Heading & problem statement
-# -------------------------------
+# --------------------------------------------------
+# Load data
+# --------------------------------------------------
+@st.cache_data
+def load_data():
+    csv_path = Path(__file__).parent / "src" / "synthetic_markdown_dataset.csv"
+    df = pd.read_csv(csv_path)
+    return df
+
+try:
+    df = load_data()
+except Exception as e:
+    st.error(f"❌ Failed to load the dataset: {e}")
+    st.stop()
+
+# --------------------------------------------------
+# App title
+# --------------------------------------------------
 st.title("🛍️ Retail Markdown Optimization Assistant")
 
-with st.expander("ℹ️ What problem does this app solve?", expanded=True):
-    st.markdown("""
-        **Business problem**  
-        Retailers often apply discounts without knowing **how deep** to markdown
-        or **which stage** (M1–M4) gives the best balance between:
-        - Clearing seasonal or slow-moving stock  
-        - Protecting profit margin
+# --------------------------------------------------
+# Problem statement
+# --------------------------------------------------
+st.subheader("ℹ️ What problem does this app solve?")
 
-        This app helps you answer:
-        - Which **categories and seasons** respond best to deeper markdowns?
-        - For a given product, which **markdown stage** maximizes
-          **revenue** and **sell-through**?
+col1, col2 = st.columns(2)
+with col1:
+    st.markdown("**Business Problem**")
+    st.markdown("""
+    Retailers often apply discounts without knowing:
+    - How deep to markdown
+    - Which markdown stage (M1–M4) balances clearance and profit
+    - Which products respond best to discounts
     """)
 
-# -------------------------------
+with col2:
+    st.markdown("**This App Helps You Answer:**")
+    st.markdown("""
+    - Which **categories and seasons** respond best to deeper markdowns  
+    - Which **markdown stage** maximizes revenue for each product
+    - What is the **optimal discount** to maximize both sales and profit
+    """)
+
+st.divider()
+
+# --------------------------------------------------
 # Sidebar filters
-# -------------------------------
-st.sidebar.header("Global filters")
+# --------------------------------------------------
+st.sidebar.header("🔍 Filters")
 
-category_options = sorted(df["category"].unique())
-season_options = sorted(df["season"].unique())
+categories = sorted(df["Category"].unique())
+seasons = sorted(df["Season"].unique())
+brands = sorted(df["Brand"].unique())
 
-selected_categories = st.sidebar.multiselect("Category", options=category_options, default=category_options)
-selected_seasons = st.sidebar.multiselect("Season", options=season_options, default=season_options)
+selected_categories = st.sidebar.multiselect(
+    "Category",
+    categories,
+    default=categories
+)
 
+selected_seasons = st.sidebar.multiselect(
+    "Season",
+    seasons,
+    default=seasons
+)
+
+selected_brands = st.sidebar.multiselect(
+    "Brand",
+    brands,
+    default=brands[:3] if len(brands) > 3 else brands
+)
+
+# Filter data
 filtered_df = df[
-    df["category"].isin(selected_categories) &
-    df["season"].isin(selected_seasons)
+    df["Category"].isin(selected_categories) &
+    df["Season"].isin(selected_seasons) &
+    df["Brand"].isin(selected_brands)
 ].copy()
 
-filtered_long = metrics_long[
-    metrics_long["category"].isin(selected_categories) &
-    metrics_long["season"].isin(selected_seasons)
-].copy()
+if len(filtered_df) == 0:
+    st.warning("⚠️ No data matches the selected filters. Please adjust your filters.")
+    st.stop()
 
-# -------------------------------
-# Key insights cards
-# -------------------------------
-st.subheader("📌 Key Insights")
-k1, k2, k3, k4 = st.columns(4)
-
-total_products = filtered_df["product_id"].nunique()
-total_categories = filtered_df["category"].nunique()
-best_selling_category = filtered_df.groupby("category")["price"].sum().idxmax()
-top_season = filtered_df.groupby("season")["price"].sum().idxmax()
-
-k1.metric("Total Products", total_products)
-k2.metric("Total Categories", total_categories)
-k3.metric("Best Selling Category", best_selling_category)
-k4.metric("Top Season", top_season)
-
-st.divider()
-
-# -------------------------------
-# Tabs for dashboard & drill-down
-# -------------------------------
-tab1, tab2 = st.tabs(["Category/Season Dashboard", "Product Drill-down"])
-
-# -------------------------------
-# TAB 1: Category/Season Dashboard
-# -------------------------------
-with tab1:
-    st.subheader("Revenue by markdown stage (per category)")
-
-    if filtered_long.empty:
-        st.info("No data for selected filters.")
-    else:
-        rev_by_cat_stage = (
-            filtered_long.groupby(["category", "stage"], as_index=False)["revenue"].sum()
-        )
+# --------------------------------------------------
+# Reshape data for markdown analysis
+# --------------------------------------------------
+# Create a long-form dataset with all markdown stages
+markdown_data = []
+for _, row in filtered_df.iterrows():
+    for i in range(1, 5):
+        markdown_col = f"Markdown_{i}"
+        sales_col = f"Sales_After_M{i}"
         
-        # Plot with Plotly
-        fig = px.bar(
-            rev_by_cat_stage,
-            x="stage",
-            y="revenue",
-            color="category",
-            barmode="group",
-            labels={"stage": "Markdown Stage", "revenue": "Revenue ($)", "category": "Category"}
-        )
-        st.plotly_chart(fig, use_container_width=True)
+        if markdown_col in row and sales_col in row:
+            revenue = row["Original_Price"] * (1 - row[markdown_col]) * row[sales_col]
+            markdown_data.append({
+                "Product_ID": row["Product_ID"],
+                "Category": row["Category"],
+                "Season": row["Season"],
+                "Brand": row["Brand"],
+                "Stage": f"M{i}",
+                "Markdown": row[markdown_col],
+                "Sales": row[sales_col],
+                "Revenue": revenue,
+                "Original_Price": row["Original_Price"]
+            })
 
-        # Season × Category revenue
-        st.subheader("Season × Category: total revenue")
-        heat = filtered_long.groupby(["category", "season"], as_index=False)["revenue"].sum()
-        heat_pivot = heat.pivot(index="category", columns="season", values="revenue").fillna(0)
-        st.dataframe(heat_pivot.style.format("{:,.0f}"), use_container_width=True)
+markdown_df = pd.DataFrame(markdown_data)
 
-# -------------------------------
-# TAB 2: Product Drill-down
-# -------------------------------
-with tab2:
-    st.subheader("Product drill-down")
+# --------------------------------------------------
+# KPIs
+# --------------------------------------------------
+st.subheader("📊 Key Metrics")
 
-    if filtered_df.empty:
-        st.info("No products for selected filters.")
-    else:
-        prod_subset = filtered_df.copy()
-        prod_subset["product_label"] = (
-            prod_subset["product_name"] + " | " +
-            prod_subset["brand"] + " | " +
-            prod_subset["season"]
-        )
-        selected_label = st.selectbox("Select product", sorted(prod_subset["product_label"].unique()))
-        row = prod_subset[prod_subset["product_label"] == selected_label].iloc[0]
+col1, col2, col3, col4 = st.columns(4)
 
-        # Display product info (only essential columns)
-        st.markdown("### Product Info")
-        c1, c2 = st.columns(2)
-        with c1:
-            st.write(f"**Name:** {row['product_name']}")
-            st.write(f"**Category:** {row['category']}")
-            st.write(f"**Brand:** {row['brand']}")
-            st.write(f"**Season:** {row['season']}")
-            st.write(f"**Price:** {row['price']:.2f}")
-        with c2:
-            st.write(f"**Stock Level:** {int(row['stock_level'])}")
+# Find best markdown stage per product
+best_per_product = markdown_df.loc[markdown_df.groupby("Product_ID")["Revenue"].idxmax()]
 
-        # Stage metrics for this product
-        prod_metrics = metrics_long[
-            (metrics_long["product_name"] == row["product_name"]) &
-            (metrics_long["brand"] == row["brand"]) &
-            (metrics_long["season"] == row["season"])
-        ][["stage", "markdown", "sales", "revenue", "sell_through"]].copy()
+with col1:
+    total_revenue = best_per_product["Revenue"].sum()
+    st.metric("💰 Max Potential Revenue", f"${total_revenue:,.0f}")
 
-        prod_metrics["Markdown %"] = (prod_metrics["markdown"] * 100).round(1)
-        prod_metrics["Revenue $"] = prod_metrics["revenue"].round(0).astype(int)
+with col2:
+    avg_optimal_discount = best_per_product["Markdown"].mean() * 100
+    st.metric("🎯 Avg Optimal Discount", f"{avg_optimal_discount:.1f}%")
 
-        st.markdown("### Markdown Performance by Stage")
-        st.dataframe(
-            prod_metrics[["stage", "Markdown %", "sales", "Revenue $", "sell_through"]],
-            use_container_width=True
-        )
+with col3:
+    products_analyzed = len(best_per_product)
+    st.metric("📦 Products Analyzed", f"{products_analyzed:,}")
 
-        # Charts: revenue & sales
-        col_r1, col_r2 = st.columns(2)
-        with col_r1:
-            st.markdown("#### Revenue by Stage")
-            st.bar_chart(prod_metrics.set_index("stage")[["Revenue $"]])
-        with col_r2:
-            st.markdown("#### Sales by Stage")
-            st.bar_chart(prod_metrics.set_index("stage")[["sales"]])
-
-        # Best stage
-        best_rev_stage = prod_metrics.loc[prod_metrics["Revenue $"].idxmax(), "stage"]
-        best_sell_stage = prod_metrics.loc[prod_metrics["sell_through"].idxmax(), "stage"]
-        st.markdown("### Interpretation")
-        st.write(f"- **Best revenue stage:** {best_rev_stage}")
-        st.write(f"- **Best sell-through stage:** {best_sell_stage}")
+with col4:
+    # Calculate average sales lift from optimal markdown
+    historical_sales = filtered_df["Historical_Sales"].mean()
+    optimal_sales = best_per_product["Sales"].mean()
+    sales_lift = ((optimal_sales / historical_sales) - 1) * 100
+    st.metric("📈 Avg Sales Lift", f"+{sales_lift:.1f}%")
 
 st.divider()
+
+# --------------------------------------------------
+# Revenue by Markdown Stage
+# --------------------------------------------------
+st.subheader("💵 Revenue by Markdown Stage")
+
+col1, col2 = st.columns([2, 1])
+
+with col1:
+    revenue_by_stage = markdown_df.groupby(["Stage", "Category"])["Revenue"].sum().reset_index()
+    
+    fig = px.bar(
+        revenue_by_stage,
+        x="Stage",
+        y="Revenue",
+        color="Category",
+        title="Revenue Performance Across Markdown Stages",
+        barmode="group",
+        color_discrete_sequence=px.colors.qualitative.Set2
+    )
+    fig.update_layout(height=400)
+    st.plotly_chart(fig, use_container_width=True)
+
+with col2:
+    st.markdown("**Key Insights:**")
+    
+    # Find best stage overall
+    stage_totals = markdown_df.groupby("Stage")["Revenue"].sum()
+    best_stage = stage_totals.idxmax()
+    
+    st.info(f"""
+    - **Best Overall Stage:** {best_stage}
+    - **Total Revenue:** ${stage_totals[best_stage]:,.0f}
+    
+    The optimal markdown stage varies by category and product. Use the chart to identify patterns.
+    """)
+
+st.divider()
+
+# --------------------------------------------------
+# Category Performance
+# --------------------------------------------------
+st.subheader("🏆 Category Performance Analysis")
+
+col1, col2 = st.columns(2)
+
+with col1:
+    category_revenue = best_per_product.groupby("Category")["Revenue"].sum().reset_index()
+    category_revenue = category_revenue.sort_values("Revenue", ascending=False)
+    
+    fig = px.bar(
+        category_revenue,
+        x="Category",
+        y="Revenue",
+        title="Revenue by Category (at Optimal Markdown)",
+        color="Revenue",
+        color_continuous_scale="Viridis"
+    )
+    fig.update_layout(height=350)
+    st.plotly_chart(fig, use_container_width=True)
+
+with col2:
+    category_discount = best_per_product.groupby("Category")["Markdown"].mean().reset_index()
+    category_discount["Markdown"] = category_discount["Markdown"] * 100
+    
+    fig = px.bar(
+        category_discount,
+        x="Category",
+        y="Markdown",
+        title="Average Optimal Discount by Category",
+        color="Markdown",
+        color_continuous_scale="RdYlGn_r"
+    )
+    fig.update_layout(height=350, yaxis_title="Discount (%)")
+    st.plotly_chart(fig, use_container_width=True)
+
+st.divider()
+
+# --------------------------------------------------
+# Seasonal Analysis
+# --------------------------------------------------
+st.subheader("🌤️ Seasonal Markdown Performance")
+
+season_stage = markdown_df.groupby(["Season", "Stage"])["Revenue"].sum().reset_index()
+
+fig = px.line(
+    season_stage,
+    x="Stage",
+    y="Revenue",
+    color="Season",
+    markers=True,
+    title="Revenue by Season Across Markdown Stages"
+)
+fig.update_layout(height=400)
+st.plotly_chart(fig, use_container_width=True)
+
+st.divider()
+
+# --------------------------------------------------
+# Best Markdown Stage per Product
+# --------------------------------------------------
+st.subheader("🎯 Optimal Markdown Strategy per Product")
+
+# Show top products with their optimal strategy
+top_products = best_per_product.nlargest(20, "Revenue")[
+    ["Product_ID", "Category", "Season", "Brand", "Stage", "Markdown", "Revenue"]
+].copy()
+
+top_products["Markdown %"] = (top_products["Markdown"] * 100).round(1)
+top_products["Revenue"] = top_products["Revenue"].round(0)
+
+st.dataframe(
+    top_products[["Product_ID", "Category", "Season", "Brand", "Stage", "Markdown %", "Revenue"]],
+    use_container_width=True,
+    hide_index=True,
+    column_config={
+        "Revenue": st.column_config.NumberColumn(
+            "Revenue",
+            format="$%.0f"
+        ),
+        "Markdown %": st.column_config.NumberColumn(
+            "Optimal Discount",
+            format="%.1f%%"
+        )
+    }
+)
+
+# Download option
+csv = best_per_product.to_csv(index=False)
+st.download_button(
+    label="📥 Download Full Analysis (CSV)",
+    data=csv,
+    file_name="optimal_markdown_strategy.csv",
+    mime="text/csv"
+)
+
+st.divider()
+
+# --------------------------------------------------
+# Markdown vs Revenue Scatter
+# --------------------------------------------------
+st.subheader("📉 Markdown Depth vs Revenue Relationship")
+
+fig = px.scatter(
+    markdown_df,
+    x="Markdown",
+    y="Revenue",
+    color="Category",
+    size="Sales",
+    hover_data=["Product_ID", "Stage"],
+    title="Relationship between Discount Depth and Revenue",
+    labels={"Markdown": "Discount Level", "Revenue": "Revenue Generated"}
+)
+fig.update_xaxis(tickformat=".0%")
+fig.update_layout(height=400)
+st.plotly_chart(fig, use_container_width=True)
+
+st.caption("💡 Each point represents a product at a specific markdown stage. Larger bubbles indicate higher sales volume.")
+
+st.divider()
+
+# --------------------------------------------------
+# Footer
+# --------------------------------------------------
 st.caption("Built with Streamlit • Retail Markdown Optimization Assistant")
+st.caption(f"📊 Analyzing {len(filtered_df)} products across {len(selected_categories)} categories")

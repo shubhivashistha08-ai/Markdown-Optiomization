@@ -35,9 +35,8 @@ def main():
             """
         )
 
-    # Optional usage guide
-    show_help = st.checkbox("Show quick usage guide", value=False)
-    if show_help:
+    # --- Optional usage guide as dropdown (collapsed by default) ---
+    with st.expander("📘 Quick usage guide (click to expand)", expanded=False):
         st.markdown("### How to use this app")
 
         c1, c2, c3 = st.columns(3)
@@ -128,6 +127,23 @@ def main():
 
     st.markdown("---")
 
+    # ---------- Centered mode selector ----------
+    st.markdown("")
+    b1, b2, b3 = st.columns([1, 2, 1])
+    with b1:
+        st.empty()
+    with b2:
+        mode = st.radio(
+            "",
+            options=["Category/Season dashboard", "Product drill‑down"],
+            horizontal=True,
+            label_visibility="collapsed",
+        )
+    with b3:
+        st.empty()
+
+    st.markdown("")
+
     # ---------- Tabs ----------
     tab1, tab2 = st.tabs(["Category/Season dashboard", "Product drill‑down"])
 
@@ -188,74 +204,74 @@ def main():
 
                 st.plotly_chart(fig, use_container_width=True)
 
-                # ===== CREATIVE VISUALIZATION: FLOWCHART STEPS =====
+                # Visual flow explanation
                 st.markdown("##### 📊 How this chart is computed")
-                
-                # Create 4 columns for step visualization
                 col1, col2, col3, col4 = st.columns(4)
-                
+
                 steps = [
                     {
                         "emoji": "📦",
-                        "title": "Step 1: Row Level",
-                        "desc": "For each product & markdown stage M1–M4, compute:\n\n**Revenue** = Original_Price × (1 − Markdown_i) × Sales_After_Mi",
-                        "color": "#667eea"
+                        "title": "Step 1: Row level",
+                        "desc": "For each product & stage M1–M4, compute\n\nRevenue = Price × (1 − Markdown_i) × Sales_After_Mi",
+                        "color": "#667eea",
                     },
                     {
                         "emoji": "📊",
-                        "title": "Step 2: Grouping",
+                        "title": "Step 2: Group",
                         "desc": "Sum revenue by **Category** and **Stage** to get total revenue per category at each markdown stage",
-                        "color": "#764ba2"
+                        "color": "#764ba2",
                     },
                     {
                         "emoji": "📈",
-                        "title": "Step 3: Visualization",
-                        "desc": "X‑axis = Stage (M1–M4)\nY‑axis = Revenue (Millions)\nColor = Category\nValue labels on each stack",
-                        "color": "#f093fb"
+                        "title": "Step 3: Plot",
+                        "desc": "X = Stage (M1–M4)\nY = Revenue (Millions)\nColor = Category\nLabels = value on each stack",
+                        "color": "#f093fb",
                     },
                     {
                         "emoji": "✨",
                         "title": "Step 4: Insight",
-                        "desc": "Identify **best-performing stage** and revenue distribution across markdown levels",
-                        "color": "#4facfe"
-                    }
+                        "desc": "See which **stage** and **category** combinations generate the strongest revenue lift",
+                        "color": "#4facfe",
+                    },
                 ]
-                
+
                 cols = [col1, col2, col3, col4]
                 for idx, col in enumerate(cols):
                     with col:
                         st.markdown(
                             f"""
                             <div style="
-                                background: linear-gradient(135deg, {steps[idx]['color']} 0%, rgba(255,255,255,0.1) 100%);
-                                padding: 24px;
+                                background: linear-gradient(135deg, {steps[idx]['color']} 0%, rgba(0,0,0,0.35) 100%);
+                                padding: 18px;
                                 border-radius: 14px;
                                 color: white;
                                 text-align: center;
-                                box-shadow: 0 8px 24px rgba(0,0,0,0.15);
-                                height: 280px;
+                                box-shadow: 0 8px 24px rgba(0,0,0,0.25);
+                                height: 230px;
                                 display: flex;
                                 flex-direction: column;
                                 justify-content: space-between;
-                                border: 2px solid rgba(255,255,255,0.2);
-                                transition: transform 0.3s ease, box-shadow 0.3s ease;
+                                border: 1px solid rgba(255,255,255,0.15);
                             ">
-                                <div style="font-size: 3em; margin-bottom: 8px;">{steps[idx]['emoji']}</div>
-                                <div style="font-weight: bold; font-size: 1.05em; margin-bottom: 12px; letter-spacing: 0.5px;">{steps[idx]['title']}</div>
-                                <div style="font-size: 0.85em; line-height: 1.5; opacity: 0.95;">{steps[idx]['desc']}</div>
+                                <div style="font-size: 2.3em; margin-bottom: 4px;">{steps[idx]['emoji']}</div>
+                                <div style="font-weight: 600; font-size: 0.95em; margin-bottom: 6px;">
+                                    {steps[idx]['title']}
+                                </div>
+                                <div style="font-size: 0.8em; line-height: 1.4;">
+                                    {steps[idx]['desc']}
+                                </div>
                             </div>
                             """,
-                            unsafe_allow_html=True
+                            unsafe_allow_html=True,
                         )
-                
-                # Add connecting arrows
+
                 st.markdown(
                     """
-                    <div style="text-align: center; margin-top: -20px; font-size: 1.5em; color: #999;">
-                    ↓ → ↓ → ↓ → ↓
+                    <div style="text-align: center; margin-top: 4px; font-size: 1.4em; color: #999;">
+                        ↓ &nbsp; → &nbsp; ↓ &nbsp; → &nbsp; ↓ &nbsp; → &nbsp; ↓
                     </div>
                     """,
-                    unsafe_allow_html=True
+                    unsafe_allow_html=True,
                 )
 
             else:

@@ -89,7 +89,7 @@ filtered_df = df[
 st.subheader("📊 Revenue by Markdown Stage and Category")
 
 filtered_df["Revenue"] = (
-    filtered_df["Price"]
+    filtered_df["price"]
     * (1 - filtered_df["Markdown"])
     * filtered_df["Sales_After"]
 )

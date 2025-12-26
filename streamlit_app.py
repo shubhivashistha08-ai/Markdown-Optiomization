@@ -1,6 +1,12 @@
+import sys
+from pathlib import Path
 import streamlit as st
 import plotly.express as px
 import pandas as pd
+
+# Fix import paths for Streamlit Cloud
+script_dir = Path(__file__).parent.absolute()
+sys.path.insert(0, str(script_dir))
 
 from src.data_loading import load_markdown_data
 from src.markdown_metrics import compute_stage_metrics

@@ -162,7 +162,7 @@ with tab1:
     col1, col2 = st.columns([3, 2])
     
     with col1:
-        st.markdown("""
+        st.markdown(""
         **Where We Are Today:**
         
         Your retail team manages thousands of products across multiple categories. Each month, decisions about 

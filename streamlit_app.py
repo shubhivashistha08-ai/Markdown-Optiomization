@@ -511,19 +511,19 @@ with tab4:
     col1, col2 = st.columns(2)
     
     with col1:
-        # Top 10 Brands chart WITHOUT data labels
-        fig = px.bar(
-            brand_performance.head(10),
-            x="Brand",
-            y="Revenue",
-            title="Top 10 Brands by Revenue Potential",
-            color="Revenue",
-            color_continuous_scale="Viridis"
-        )
-        # ensure no text labels
-        fig.update_traces(text=None, texttemplate=None, textposition=None)
-        fig.update_layout(height=400, showlegend=False)
-        st.plotly_chart(fig, use_container_width=True)
+    fig = px.bar(
+        brand_performance.head(10),
+        x="Brand",
+        y="Revenue",
+        title="Top 10 Brands by Revenue Potential",
+        color="Revenue",
+        color_continuous_scale="Viridis",
+        # removed text_auto to disable labels
+    )
+    # remove any text styling
+    fig.update_traces(texttemplate=None, textposition=None)
+    fig.update_layout(height=400, showlegend=False)
+    st.plotly_chart(fig, use_container_width=True)
     
     with col2:
         fig = px.scatter(

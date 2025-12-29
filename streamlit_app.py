@@ -155,10 +155,9 @@ tab1, tab2, tab3, tab4 = st.tabs([
 with tab1:
     st.header("📖 The Markdown Story: A Data-Driven Journey")
     
-    # Story Timeline
     st.markdown("---")
     
-    # Step 1
+    # Act 1
     st.markdown("### 🎬 **Act 1: The Current Situation**")
     col1, col2 = st.columns([3, 2])
     
@@ -169,15 +168,14 @@ with tab1:
         Your retail team manages thousands of products across multiple categories. Each month, decisions about 
         discounting are made manually, often leading to:
         
-        - 🔴 **Over-discounting** → Lost profit margins
-        - 🔴 **Under-discounting** → Excess inventory and missed sales
-        - 🔴 **Inconsistent strategy** → No clear framework for markdown decisions
+        - 🔴 **Over-discounting** → Lost profit margins  
+        - 🔴 **Under-discounting** → Excess inventory and missed sales  
+        - 🔴 **Inconsistent strategy** → No clear framework for markdown decisions  
         
         The cost of these inefficiencies? Potentially **millions in lost revenue** annually.
         """)
     
     with col2:
-        # Current state metrics
         baseline_revenue = filtered_df["Original_Price"].sum() * filtered_df["Historical_Sales"].mean()
         potential_revenue = best_per_product["Revenue"].sum()
         revenue_gap = potential_revenue - baseline_revenue
@@ -197,7 +195,7 @@ with tab1:
     
     st.markdown("---")
     
-    # Step 2
+    # Act 2
     st.markdown("### 💡 **Act 2: The Discovery**")
     
     col1, col2 = st.columns(2)
@@ -209,33 +207,29 @@ with tab1:
         Our analysis of historical markdown performance uncovered three critical insights:
         """)
         
-        # Find best performing category
         category_revenue = best_per_product.groupby("Category")["Revenue"].sum()
         best_category = category_revenue.idxmax()
         
-        # Find best stage
         stage_totals = markdown_df.groupby("Stage")["Revenue"].sum()
         best_stage = stage_totals.idxmax()
         
-        # Calculate average optimal discount range
         discount_range = best_per_product["Markdown"].quantile([0.25, 0.75]) * 100
         
         st.markdown(f"""
-        **1️⃣ Not All Categories Are Created Equal**
-        - **{best_category}** products generate the highest revenue with optimized markdowns
-        - Different categories respond differently to discount depths
+        **1️⃣ Not All Categories Are Created Equal**  
+        - **{best_category}** products generate the highest revenue with optimized markdowns  
+        - Different categories respond differently to discount depths  
         
-        **2️⃣ Timing Matters**
-        - Stage **{best_stage}** consistently delivers the best revenue performance
-        - Early or late markdowns can hurt profitability
+        **2️⃣ Timing Matters**  
+        - Stage **{best_stage}** consistently delivers the best revenue performance  
+        - Early or late markdowns can hurt profitability  
         
-        **3️⃣ The Sweet Spot**
-        - Optimal discounts typically fall between **{discount_range[0.25]:.0f}% - {discount_range[0.75]:.0f}%**
-        - Going deeper doesn't always mean more sales or revenue
+        **3️⃣ The Sweet Spot**  
+        - Optimal discounts typically fall between **{discount_range[0.25]:.0f}% - {discount_range[0.75]:.0f}%**  
+        - Going deeper doesn't always mean more sales or revenue  
         """)
     
     with col2:
-        # Best stage performance chart (still showing labels here if you want)
         stage_revenue_df = markdown_df.groupby("Stage")["Revenue"].sum().reset_index()
         fig = px.bar(
             stage_revenue_df,
@@ -252,7 +246,7 @@ with tab1:
     
     st.markdown("---")
     
-    # Step 3
+    # Act 3
     st.markdown("### 🎯 **Act 3: The Path Forward**")
     
     st.markdown("""
@@ -261,7 +255,6 @@ with tab1:
     Based on data analysis, here's your roadmap to optimized markdown strategy:
     """)
     
-    # Create action plan boxes
     col1, col2, col3 = st.columns(3)
     
     with col1:
@@ -307,7 +300,6 @@ with tab1:
 with tab2:
     st.header("📊 Performance Analysis")
     
-    # Revenue by Stage
     st.subheader("💵 Revenue Performance Across Markdown Stages")
     
     col1, col2 = st.columns([2, 1])
@@ -315,7 +307,6 @@ with tab2:
     with col1:
         revenue_by_stage = markdown_df.groupby(["Stage", "Category"])["Revenue"].sum().reset_index()
         
-        # CHART 1: Revenue by Markdown Stage and Category (NO DATA LABELS)
         fig = px.bar(
             revenue_by_stage,
             x="Stage",
@@ -354,7 +345,6 @@ with tab2:
     
     st.divider()
     
-    # Category Performance
     st.subheader("🏆 Category Performance Comparison")
     
     col1, col2 = st.columns(2)
@@ -371,8 +361,11 @@ with tab2:
             color_discrete_sequence=["#FF6B6B", "#4ECDC4", "#45B7D1"],
             hole=0.4
         )
-        fig.update_traces(textposition='outside', textinfo='percent+label+value', 
-                          texttemplate='%{label}<br>%{percent:.1%}<br>$%{value:.2s}')
+        fig.update_traces(
+            textposition='outside',
+            textinfo='percent+label+value',
+            texttemplate='%{label}<br>%{percent:.1%}<br>$%{value:.2s}'
+        )
         fig.update_layout(height=400)
         st.plotly_chart(fig, use_container_width=True)
     
@@ -381,7 +374,6 @@ with tab2:
         category_discount["Markdown"] = category_discount["Markdown"] * 100
         category_discount = category_discount.sort_values("Markdown", ascending=False)
         
-        # CHART 2: Average Optimal Discount by Category (NO DATA LABELS)
         fig = px.bar(
             category_discount,
             x="Category",
@@ -395,7 +387,6 @@ with tab2:
     
     st.divider()
     
-    # Seasonal Analysis
     st.subheader("🌤️ Seasonal Performance Trends")
     
     season_stage = markdown_df.groupby(["Season", "Stage"])["Revenue"].sum().reset_index()
@@ -423,7 +414,6 @@ with tab3:
     Use this to prioritize which products to markdown first.
     """)
     
-    # Show top products
     top_products = best_per_product.nlargest(30, "Revenue")[
         ["Product_ID", "Category", "Season", "Brand", "Stage", "Markdown", "Revenue"]
     ].copy()
@@ -431,7 +421,6 @@ with tab3:
     top_products["Optimal Discount %"] = (top_products["Markdown"] * 100).round(1)
     top_products["Expected Revenue"] = top_products["Revenue"].round(0)
     
-    # Add recommendation column
     def get_recommendation(row):
         if row["Stage"] in ["M1", "M2"]:
             return "✅ Early Markdown"
@@ -443,7 +432,10 @@ with tab3:
     top_products["Strategy"] = top_products.apply(get_recommendation, axis=1)
     
     st.dataframe(
-        top_products[["Product_ID", "Category", "Season", "Brand", "Strategy", "Stage", "Optimal Discount %", "Expected Revenue"]],
+        top_products[[
+            "Product_ID", "Category", "Season", "Brand", "Strategy",
+            "Stage", "Optimal Discount %", "Expected Revenue"
+        ]],
         use_container_width=True,
         hide_index=True,
         column_config={
@@ -458,7 +450,6 @@ with tab3:
         }
     )
     
-    # Download option
     csv = best_per_product.to_csv(index=False)
     st.download_button(
         label="📥 Download Full Product Recommendations (CSV)",
@@ -471,7 +462,6 @@ with tab3:
 with tab4:
     st.header("🔍 Deep Dive Analysis")
     
-    # Discount effectiveness by range
     st.subheader("📉 Discount Effectiveness by Range")
     
     st.markdown("""
@@ -479,7 +469,6 @@ with tab4:
     The goal is to find the "sweet spot" where discounts drive sales without eroding too much margin.
     """)
     
-    # Create discount bins
     markdown_df["Discount_Range"] = pd.cut(
         markdown_df["Markdown"] * 100, 
         bins=[0, 15, 20, 25, 30, 35, 40, 50],
@@ -494,7 +483,6 @@ with tab4:
     
     discount_analysis.columns = ["Discount_Range", "Category", "Revenue", "Sales", "Product_Count"]
     
-    # CHART 3: Revenue by Discount Range and Category (NO DATA LABELS)
     fig = px.bar(
         discount_analysis,
         x="Discount_Range",
@@ -509,7 +497,6 @@ with tab4:
     
     st.markdown("---")
     
-    # Brand performance comparison
     st.subheader("🏢 Brand Performance Comparison")
     
     brand_performance = best_per_product.groupby("Brand").agg({
@@ -524,16 +511,17 @@ with tab4:
     col1, col2 = st.columns(2)
     
     with col1:
+        # Top 10 Brands chart WITHOUT data labels
         fig = px.bar(
             brand_performance.head(10),
             x="Brand",
             y="Revenue",
             title="Top 10 Brands by Revenue Potential",
             color="Revenue",
-            color_continuous_scale="Viridis",
-            text_auto='.2s'
+            color_continuous_scale="Viridis"
         )
-        fig.update_traces(texttemplate='$%{text}', textposition='outside')
+        # ensure no text labels
+        fig.update_traces(text=None, texttemplate=None, textposition=None)
         fig.update_layout(height=400, showlegend=False)
         st.plotly_chart(fig, use_container_width=True)
     

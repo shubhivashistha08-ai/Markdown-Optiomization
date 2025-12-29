@@ -522,7 +522,6 @@ with tab4:
     )
     # remove any text styling
     fig.update_traces(texttemplate=None, textposition=None)
-    fig.update_layout(height=400, showlegend=False)
     st.plotly_chart(fig, use_container_width=True)
     
     with col2:

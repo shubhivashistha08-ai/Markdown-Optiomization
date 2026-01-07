@@ -246,7 +246,7 @@ Our analysis of historical markdown performance uncovered three critical insight
             color_continuous_scale=["#45B7D1", "#4ECDC4", "#FFB800", "#FF6B6B"],
             text_auto='.2s'
         )
-        fig.update_traces(texttemplate='$%{text}', textposition='outside')
+       # fig.update_traces(texttemplate='$%{text}', textposition='outside')
         fig.update_layout(height=350, showlegend=False)
         st.plotly_chart(fig, use_container_width=True)
     

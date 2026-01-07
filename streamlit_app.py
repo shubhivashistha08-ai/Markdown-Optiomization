@@ -235,20 +235,21 @@ Our analysis of historical markdown performance uncovered three critical insight
 """)
     
     with col2:
-        # Best stage performance chart
-        stage_revenue_df = markdown_df.groupby("Stage")["Revenue"].sum().reset_index()
-        fig = px.bar(
-            stage_revenue_df,
-            x="Stage",
-            y="Revenue",
-            title="💰 Revenue Performance by Markdown Stage",
-            color="Revenue",
-            color_continuous_scale=["#45B7D1", "#4ECDC4", "#FFB800", "#FF6B6B"],
-            text_auto='.2s'
-        )
-       # fig.update_traces(texttemplate='$%{text}', textposition='outside')
-        fig.update_layout(height=350, showlegend=False)
-        st.plotly_chart(fig, use_container_width=True)
+    # Best stage performance chart (no data labels)
+    stage_revenue_df = markdown_df.groupby("Stage")["Revenue"].sum().reset_index()
+    fig = px.bar(
+        stage_revenue_df,
+        x="Stage",
+        y="Revenue",
+        title="💰 Revenue Performance by Markdown Stage",
+        color="Revenue",
+        color_continuous_scale=["#45B7D1", "#4ECDC4", "#FFB800", "#FF6B6B"],
+        # removed text_auto so no labels are generated
+    )
+    # ensure no residual text configuration
+    fig.update_traces(text=None, texttemplate=None, textposition=None)
+    fig.update_layout(height=350, showlegend=False)
+    st.plotly_chart(fig, use_container_width=True)
     
     st.markdown("---")
     
